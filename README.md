@@ -65,7 +65,7 @@ The response would look something like this:
 Deploy to Heroku
 ---------------
 
-Click on this magic to automatically deploy this app on a free heroku dyno ;) 
+Click on this magic button to automatically deploy this app on a free heroku dyno ;) 
 
 [![Deploy](https://www.herokucdn.com/deploy/button.png)](https://heroku.com/deploy)
 
