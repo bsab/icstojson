@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import os
+import sys
+import csv
 import json
 import re
-import hashlib, urllib2
+import hashlib, optparse, urllib2
 
-from flask import Flask, abort, jsonify, request
-from flask import render_template
-
-from urllib import urlopen
 from datetime import timedelta
+from flask import Flask, abort, jsonify, request
 from icalendar import Calendar, Event, vDatetime
+from urllib import urlopen
 
 app = Flask(__name__)
 
@@ -51,69 +51,57 @@ def get_url_content(url):
 
     return ics;
 
-
-def convert_to_json(cal):
+def convert_pyconfcal_to_json(cal):
     data = {}
     data[cal.name] = dict(cal.items())
     data[cal.name]['VEVENT'] = [];
-    
+
     for event in cal.walk():
         if isinstance(event, Event):
-            
-            uid = event.decoded("UID")
-            dtstamp = event.decoded("DTSTAMP")
-            start = event.decoded("DTSTART") + LOCAL_TIMEZONE
-            end = event.decoded("DTEND") + LOCAL_TIMEZONE
-            title = event.decoded("SUMMARY")
-            track = event.decoded("LOCATION")
-            abstract = ""
-            try:
-                # seleziono l'url alla descrizione del talk dal parametro ALTREP
-                str_to_search = str(event.to_ical().splitlines()[1]) + str(event.to_ical().splitlines()[2][1:])
-                _start = 'SUMMARY;ALTREP="'
-                _end = '"'
-                result = re.search(_start + '(.*)' + _end, str_to_search)
-                url_to_scarp = result.group(1)
-                
-                #..effettuo lo scraping del div con la classe 'cms' dalla pagina
-                abstract = url_to_scarp
-            except:
-                pass;
 
-            # costruisco il dict
+            uid = event.decoded("UID") if "UID" in event else ""
+            dtstamp = event.decoded("DTSTAMP") if "DTSTAMP" in event else ""
+            start = (event.decoded("DTSTART") if "DTSTART" in event else "") + LOCAL_TIMEZONE
+            end = (event.decoded("DTEND") if "DTEND" in event else "") + LOCAL_TIMEZONE
+            title = event.decoded("SUMMARY") if "SUMMARY" in event else ""
+            track = event.decoded("LOCATION") if "LOCATION" in event else ""
+            description = event.decoded("DESCRIPTION") if "DESCRIPTION" in event else ""
+            action = event.decoded("ACTION") if "ACTION" in event else ""
+
+            # costrtuisco il dict
             pevent = {}
-            #pevent["DTSTAMP"]= dtstamp
+            pevent["DTSTAMP"]= dtstamp
             pevent["UID"]= uid
-            pevent["ABSTRACT"]= abstract
             pevent["CLASS"] = "PUBLIC"
             pevent["SUMMARY"] = title
             pevent["LOCATION"] = track
-            #pevent["ORGANIZER;CN=Python Italia"] = "mailto:info@pycon.it"
+            pevent["ACTION"] = action
             pevent["DTSTART"] = vDatetime(start).to_ical() # start.time().strftime("%Y%m%dT%H%M")
             pevent["GEO"]= ""
+            pevent["DESCRIPTION"] = description
             pevent["DTEND"]= vDatetime(end).to_ical() #end.time().strftime("%Y%m%dT%H%M")
-            
+
             data[cal.name]['VEVENT'].append(pevent)
-    
+
     return json.dumps(data, default=date_handler)
 
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return u'Please use like <code>http://<script>document.write(location.host);</script><noscript>ical2json.pb.io</noscript>/http://www.myserver.com/path/to/file.ics</code><br>Source code and instructions at <a href="https://github.com/bsab/pyconficstojson">https://github.com/bsab/pyconficstojson.git</a>.'
 
 @app.route('/get-json/<path:url>')
 def convert_from_url(url):
-    
+
     ics = get_url_content(url)
-    
+
     hash_value = get_remote_md5_sum(url)
     print "hash_value"
     print (hash_value)
-    
-    cal = Calendar.from_ical(ics)
-    resp = convert_to_json(cal)
 
+    cal = Calendar.from_ical(ics)
+    resp = convert_pyconfcal_to_json(cal)
+    #print resp
     if 'callback' in request.args:
         resp.data = "%s(%s);" % (request.args['callback'], resp.data)
     return resp
