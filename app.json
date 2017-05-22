@@ -1,0 +1,6 @@
+{
+  "name": "ICS to Json",
+  "description": "A python/Flask app that consumes iCal data (.ics file) (publicly available at an HTTP URL) and convert it to a JSON format.",
+  "repository": "https://github.com/bsab/icstojson.git",
+  "keywords": ["python", "flask", "json", "ics"]
+}
